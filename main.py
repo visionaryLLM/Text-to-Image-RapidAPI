@@ -4,9 +4,6 @@ from gradio_client import Client
 
 app = Flask(__name__)
 
-GRADIO_URL = os.environ.get('GRADIO_URL')
-
-# Helper function to check if parameter is within range
 def check_range(param, min_val, max_val):
     return min_val <= param <= max_val
 
@@ -25,7 +22,6 @@ def generate_image():
         if not (prompt and negative):
             return jsonify({"error": "Prompt and negative parameters are required"}), 400
 
-        # Convert parameters to appropriate types, handling None values
         seed = float(seed) if seed is not None else None
         width = int(width) if width is not None else None
         height = int(height) if height is not None else None
@@ -33,18 +29,17 @@ def generate_image():
         use_negative = use_negative.lower() == 'true' if use_negative is not None else None
         random_seed = random_seed.lower() == 'true' if random_seed is not None else None
 
-        # Check parameter ranges
         if (seed is not None and not check_range(seed, 0, 2147483647)) or \
            (width is not None and not check_range(width, 256, 1536)) or \
            (height is not None and not check_range(height, 256, 1536)) or \
            (scale is not None and not check_range(scale, 0.1, 20)):
             return jsonify({"error": "Parameter out of range"}), 400
 
-        # Check if GRADIO_URL is valid
-        if GRADIO_URL is None or not GRADIO_URL.startswith('http'):
-            return jsonify({"error": "Invalid Gradio URL"}), 500
+        base_url = os.environ.get('IMAGE_BASE_URL')
+        if not base_url:
+            return jsonify({"error": "Base URL not found"}), 500
 
-        client = Client(GRADIO_URL)
+        client = Client(base_url)
         result = client.predict(prompt, negative, use_negative, seed, width, height, scale, random_seed, api_name="/run")
 
         if isinstance(result, tuple) and len(result) == 2:
@@ -56,12 +51,13 @@ def generate_image():
         else:
             return jsonify({"error": "Unexpected result format"}), 500
 
-        if len(images) > 0:  # Check if images list is not empty
-            img_url = str(GRADIO_URL) + str(images[0]["image"])
+        if images:
+            image_path = images[0]["image"]
+            image_url = f"{base_url}{image_path}"
         else:
-            img_url = None
+            image_url = None
 
-        return jsonify({"imgURL": img_url, "seed": seed}), 200
+        return jsonify({"imgURL": image_url, "seed": seed}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
