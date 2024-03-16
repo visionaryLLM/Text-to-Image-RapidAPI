@@ -4,6 +4,8 @@ from gradio_client import Client
 
 app = Flask(__name__)
 
+BASE_URL = "https://playgroundai-playground-v2-5.hf.space/--replicas/lohn0/file="
+
 def check_range(param, min_val, max_val):
     return min_val <= param <= max_val
 
@@ -35,8 +37,7 @@ def generate_image():
            (scale is not None and not check_range(scale, 0.1, 20)):
             return jsonify({"error": "Parameter out of range"}), 400
 
-        base_url = "https://playgroundai-playground-v2-5.hf.space/--replicas/vyh2s/file="
-        client = Client(base_url)
+        client = Client(BASE_URL)
         result = client.predict(prompt, negative, use_negative, seed, width, height, scale, random_seed, api_name="/run")
 
         if isinstance(result, tuple) and len(result) == 2:
@@ -50,7 +51,7 @@ def generate_image():
 
         if images:
             image_path = images[0]["image"]
-            image_url = f"{base_url}{image_path}"
+            image_url = f"{BASE_URL}{image_path}"
         else:
             image_url = None
 
