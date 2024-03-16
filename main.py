@@ -56,9 +56,12 @@ def generate_image():
         else:
             return jsonify({"error": "Unexpected result format"}), 500
 
-        image_urls = [GRADIO_URL + image["image"] for image in images]
+        if len(images) > 0:  # Check if images list is not empty
+            img_url = str(GRADIO_URL) + str(images[0]["image"])
+        else:
+            img_url = None
 
-        return jsonify({"imgURLs": image_urls, "seed": seed}), 200
+        return jsonify({"imgURL": img_url, "seed": seed}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
