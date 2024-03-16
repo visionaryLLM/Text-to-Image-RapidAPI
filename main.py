@@ -26,7 +26,7 @@ def generate_image():
             return jsonify({"error": "Prompt and negative parameters are required"}), 400
 
         # Convert parameters to appropriate types, handling None values
-        seed = int(seed) if seed is not None else None
+        seed = float(seed) if seed is not None else None
         width = int(width) if width is not None else None
         height = int(height) if height is not None else None
         scale = float(scale) if scale is not None else None
@@ -47,9 +47,18 @@ def generate_image():
         client = Client(GRADIO_URL)
         result = client.predict(prompt, negative, use_negative, seed, width, height, scale, random_seed, api_name="/run")
 
-        image_url = GRADIO_URL + result['url']
+        if isinstance(result, tuple) and len(result) == 2:
+            if isinstance(result[0], str):
+                images = [{"image": result[0], "caption": None}]
+            else:
+                images = result[0]
+            seed = result[1]
+        else:
+            return jsonify({"error": "Unexpected result format"}), 500
 
-        return jsonify({"imgURL": image_url}), 200
+        image_urls = [GRADIO_URL + image["image"] for image in images]
+
+        return jsonify({"imgURLs": image_urls, "seed": seed}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
