@@ -23,7 +23,7 @@ GET /generate?prompt=cat&negative=ugle&useNegative=True&seed=0&width=256&height=
 #### Sample Response
 ```json
 {
-    "imgURL": "http://freeimage.host/images/2014/06/04/example.png"
+    "imgURL": "http://freeimage.host/images/2006/15/06/example.png"
 }
 ```
 
