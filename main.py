@@ -35,10 +35,7 @@ def generate_image():
            (scale is not None and not check_range(scale, 0.1, 20)):
             return jsonify({"error": "Parameter out of range"}), 400
 
-        base_url = os.environ.get('IMAGE_BASE_URL')
-        if not base_url:
-            return jsonify({"error": "Base URL not found"}), 500
-
+        base_url = "https://playgroundai-playground-v2-5.hf.space/--replicas/vyh2s/file="
         client = Client(base_url)
         result = client.predict(prompt, negative, use_negative, seed, width, height, scale, random_seed, api_name="/run")
 
