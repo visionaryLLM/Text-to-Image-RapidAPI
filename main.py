@@ -1,17 +1,33 @@
 import os
+import requests
 from flask import Flask, jsonify, request
 from gradio_client import Client
 
 app = Flask(__name__)
 
 GRADIO_URL = os.environ.get('GRADIO_URL')
+FREEIMAGE_API_KEY = os.environ.get('FREEIMAGE_API_KEY')
+FREEIMAGE_HOST_API_URL = "http://freeimage.host/api/1/upload/"
 
 # Helper function to check if parameter is within range
 def check_range(param, min_val, max_val):
     return min_val <= param <= max_val
 
+def upload_to_free_image_host(image_url):
+    try:
+        response = requests.get(FREEIMAGE_HOST_API_URL, params={'key': FREEIMAGE_API_KEY, 'source': image_url, 'format': 'json'})
+        response_json = response.json()
+        if response_json.get("status_code") == 200:
+            img_url = response_json["image"]["url"]
+            return img_url
+        else:
+            return None
+    except Exception as e:
+        print(f"Error uploading image to free image host: {e}")
+        return None
+
 @app.route('/generate', methods=['GET'])
-def generate_image():
+def generate_and_upload_image():
     try:
         prompt = request.args.get('prompt')
         negative = request.args.get('negative')
@@ -49,16 +65,19 @@ def generate_image():
 
         if isinstance(result, tuple) and len(result) == 2:
             if isinstance(result[0], str):
-                images = [{"image": result[0], "caption": None}]
+                image_url = GRADIO_URL + result[0]
             else:
-                images = result[0]
+                return jsonify({"error": "Unexpected result format"}), 500
             seed = result[1]
         else:
             return jsonify({"error": "Unexpected result format"}), 500
 
-        image_urls = [GRADIO_URL + image["image"] for image in images]
-
-        return jsonify({"imgURLs": image_urls, "seed": seed}), 200
+        # Upload image to free image host
+        uploaded_img_url = upload_to_free_image_host(image_url)
+        if uploaded_img_url:
+            return jsonify({"imgURL": uploaded_img_url, "seed": seed}), 200
+        else:
+            return jsonify({"error": "Failed to upload image to free image host"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
