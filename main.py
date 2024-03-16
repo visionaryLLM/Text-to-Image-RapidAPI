@@ -1,67 +1,56 @@
-import os
-from flask import Flask, jsonify, request
+from flask import Flask, request, jsonify
+
 from gradio_client import Client
 
 app = Flask(__name__)
 
-BASE_URL = "https://playgroundai-playground-v2-5.hf.space/--replicas/lohn0/file="
-
-def check_range(param, min_val, max_val):
-    return min_val <= param <= max_val
-
-@app.route('/generate', methods=['GET'])
-def generate_image():
+@app.route('/imagine', methods=['GET'])
+def predict():
     try:
         prompt = request.args.get('prompt')
-        negative = request.args.get('negative')
-        use_negative = request.args.get('useNegative')
+        negative_prompt = request.args.get('negative_prompt')
+        use_negative_prompt = request.args.get('use_negative_prompt')
         seed = request.args.get('seed')
         width = request.args.get('width')
         height = request.args.get('height')
-        scale = request.args.get('scale')
-        random_seed = request.args.get('randomSeed')
+        guidance_scale = request.args.get('guidance_scale')
+        randomize_seed = request.args.get('randomize_seed')
 
-        if not (prompt and negative):
-            return jsonify({"error": "Prompt and negative parameters are required"}), 400
+        if None in [prompt, negative_prompt, use_negative_prompt, seed, width, height, guidance_scale, randomize_seed]:
+            return jsonify({"error": "Incomplete parameters"}), 400
 
-        seed = float(seed) if seed is not None else None
-        width = int(width) if width is not None else None
-        height = int(height) if height is not None else None
-        scale = float(scale) if scale is not None else None
-        use_negative = use_negative.lower() == 'true' if use_negative is not None else None
-        random_seed = random_seed.lower() == 'true' if random_seed is not None else None
+        prompt = str(prompt)
+        negative_prompt = str(negative_prompt)
+        use_negative_prompt = bool(use_negative_prompt)
+        seed = float(seed)
+        width = float(width)
+        height = float(height)
+        guidance_scale = float(guidance_scale)
+        randomize_seed = bool(randomize_seed)
 
-        if (seed is not None and not check_range(seed, 0, 2147483647)) or \
-           (width is not None and not check_range(width, 256, 1536)) or \
-           (height is not None and not check_range(height, 256, 1536)) or \
-           (scale is not None and not check_range(scale, 0.1, 20)):
-            return jsonify({"error": "Parameter out of range"}), 400
+        client = Client("https://playgroundai-playground-v2-5.hf.space/--replicas/lohn0/")
+        result = client.predict(
+            prompt,
+            negative_prompt,
+            use_negative_prompt,
+            seed,
+            width,
+            height,
+            guidance_scale,
+            randomize_seed,
+            api_name="/run"
+        )
 
-        client = Client(BASE_URL)
-        result = client.predict(prompt, negative, use_negative, seed, width, height, scale, random_seed, api_name="/run")
+        # Sample response structure
+        response = {
+            "images": result[0],  # List[Dict(image: filepath, caption: str | None)]
+            "seed": result[1]  # Seed
+        }
 
-        if isinstance(result, tuple) and len(result) == 2:
-            if isinstance(result[0], str):
-                images = [{"image": result[0], "caption": None}]
-            else:
-                images = result[0]
-            seed = result[1]
-        else:
-            return jsonify({"error": "Unexpected result format"}), 500
+        return jsonify(response)
 
-        if images:
-            image_path = images[0]["image"]
-            image_url = f"{BASE_URL}{image_path}"
-        else:
-            image_url = None
-
-        return jsonify({"imgURL": image_url, "seed": seed}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-@app.route('/')
-def home():
-    return '🤷🏻‍♂️'
 
 if __name__ == '__main__':
     app.run(debug=True)
