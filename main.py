@@ -89,7 +89,7 @@ def generate_image():
         else:
             return jsonify({"error": "Unexpected result format"}), 500
 
-        image_url = "https://playgroundai-playground-v2-5.hf.space/--replicas/lohn0/file=" + images[0]["image"]
+        image_url = "https://playgroundai-playground-v2-5.hf.space/--replicas/f551a/file=" + images[0]["image"]
 
         return jsonify({"imgURL": image_url, "seed": seed}), 200
     except ValueError as ve:
