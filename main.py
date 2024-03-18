@@ -9,39 +9,76 @@ GRADIO_URL = os.environ.get('GRADIO_URL')
 def check_range(param, min_val, max_val):
     return min_val <= param <= max_val
 
+def get_missing_params(params):
+    missing_params = []
+    if not params.get('prompt'):
+        missing_params.append("prompt")
+    if not params.get('negative'):
+        missing_params.append("negative")
+    return missing_params
+
+def fix_param_range(param, min_val, max_val):
+    if param < min_val:
+        return f"Value should be greater than or equal to {min_val}"
+    elif param > max_val:
+        return f"Value should be less than or equal to {max_val}"
+    else:
+        return None
+
 @app.route('/generate', methods=['GET'])
 def generate_image():
     try:
-        prompt = request.args.get('prompt')
-        negative = request.args.get('negative')
-        use_negative = request.args.get('useNegative')
-        seed = request.args.get('seed')
-        width = request.args.get('width')
-        height = request.args.get('height')
-        scale = request.args.get('scale')
-        random_seed = request.args.get('randomSeed')
+        params = {
+            'prompt': request.args.get('prompt'),
+            'negative': request.args.get('negative'),
+            'useNegative': request.args.get('useNegative'),
+            'seed': request.args.get('seed'),
+            'width': request.args.get('width'),
+            'height': request.args.get('height'),
+            'scale': request.args.get('scale'),
+            'randomSeed': request.args.get('randomSeed')
+        }
 
-        if not (prompt and negative):
-            return jsonify({"error": "Prompt and negative parameters are required"}), 400
+        missing_params = get_missing_params(params)
+        if missing_params:
+            return jsonify({"error": f"Missing parameters: {', '.join(missing_params)}"}), 400
 
-        seed = float(seed) if seed is not None else None
-        width = int(width) if width is not None else None
-        height = int(height) if height is not None else None
-        scale = float(scale) if scale is not None else None
-        use_negative = use_negative.lower() == 'true' if use_negative is not None else None
-        random_seed = random_seed.lower() == 'true' if random_seed is not None else None
+        seed = float(params['seed']) if params['seed'] is not None else None
+        width = int(params['width']) if params['width'] is not None else None
+        height = int(params['height']) if params['height'] is not None else None
+        scale = float(params['scale']) if params['scale'] is not None else None
+        use_negative = params['useNegative'].lower() == 'true' if params['useNegative'] is not None else None
+        random_seed = params['randomSeed'].lower() == 'true' if params['randomSeed'] is not None else None
 
-        if (seed is not None and not check_range(seed, 0, 2147483647)) or \
-           (width is not None and not check_range(width, 256, 1536)) or \
-           (height is not None and not check_range(height, 256, 1536)) or \
-           (scale is not None and not check_range(scale, 0.1, 20)):
-            return jsonify({"error": "Parameter out of range"}), 400
+        errors = {}
+        if (seed is not None):
+            error = fix_param_range(seed, 0, 2147483647)
+            if error:
+                errors['seed'] = error
+
+        if (width is not None):
+            error = fix_param_range(width, 256, 1536)
+            if error:
+                errors['width'] = error
+
+        if (height is not None):
+            error = fix_param_range(height, 256, 1536)
+            if error:
+                errors['height'] = error
+
+        if (scale is not None):
+            error = fix_param_range(scale, 0.1, 20)
+            if error:
+                errors['scale'] = error
+
+        if errors:
+            return jsonify({"error": "Parameter out of range", "details": errors}), 400
 
         if GRADIO_URL is None or not GRADIO_URL.startswith('http'):
             return jsonify({"error": "Invalid Gradio URL"}), 500
 
         client = Client(GRADIO_URL)
-        result = client.predict(prompt, negative, use_negative, seed, width, height, scale, random_seed, api_name="/run")
+        result = client.predict(params['prompt'], params['negative'], use_negative, seed, width, height, scale, random_seed, api_name="/run")
 
         if isinstance(result, tuple) and len(result) == 2:
             if isinstance(result[0], str):
@@ -56,7 +93,7 @@ def generate_image():
 
         return jsonify({"imgURL": image_url, "seed": seed}), 200
     except ValueError as ve:
-        return jsonify({"error": "Invalid parameter type: " + str(ve)}), 400
+        return jsonify({"error": str(ve)}), 400
     except Exception as e:
         return jsonify({"error": "Internal server error: " + str(e)}), 500
 
