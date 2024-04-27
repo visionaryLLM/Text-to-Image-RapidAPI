@@ -4,7 +4,7 @@ from gradio_client import Client
 
 app = Flask(__name__)
 
-GRADIO_URL = "https://playgroundai-playground-v2-5.hf.space/--replicas/jzk7i/"
+GRADIO_URL = "https://playgroundai-playground-v2-5.hf.space/--replicas/ktsmh/"
 
 def check_range(param, min_val, max_val):
     return min_val <= param <= max_val
@@ -89,7 +89,7 @@ def generate_image():
         else:
             return jsonify({"error": "Unexpected result format"}), 500
 
-        image_url = "https://playgroundai-playground-v2-5.hf.space/--replicas/jzk7i/file=" + images[0]["image"]
+        image_url = "https://playgroundai-playground-v2-5.hf.space/--replicas/ktsmh/file=" + images[0]["image"]
 
         return jsonify({"imgURL": image_url, "seed": seed}), 200
     except ValueError as ve:
